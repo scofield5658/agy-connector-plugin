@@ -15,7 +15,7 @@ import type {
   RunTurnResult,
   Workflow,
 } from '../contracts.js';
-import { configSchema } from '../config.js';
+import { MAX_BUDGET_MS, configSchema } from '../config.js';
 import { digest, fingerprint, type Session } from './sessions.js';
 type RecordEntry = {
   hash: string;
@@ -133,7 +133,7 @@ export function createDelegator({
         deadlineAt:
           start +
           (budgetFor
-            ? Math.max(5000, Math.min(300000, budgetFor(original)))
+            ? Math.max(5000, Math.min(MAX_BUDGET_MS, budgetFor(original)))
             : original.profile === 'zh-polish'
               ? config.polishBudgetMs
               : config.generalBudgetMs),
@@ -181,6 +181,7 @@ export function createDelegator({
               conversationId: session!.conversationId,
               workspaceDir: session!.dir,
               deadlineAt: Date.now() + remaining,
+              idleTimeoutMs: config.idleTimeoutMs,
             },
             ctrl.signal,
           ),

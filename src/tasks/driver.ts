@@ -11,7 +11,13 @@ import {
   taskInitialSchema,
   type PermissionHandler,
 } from './contracts.js';
-import { decodeSearchTranscript, failure } from './protocol.js';
+import {
+  decodeSearchTranscript,
+  failure,
+  isCompletedSearch,
+  searchEventFailure,
+  searchStderrCode,
+} from './protocol.js';
 import { runAcp } from './acp.js';
 export const payloadSchema = z.discriminatedUnion('mode', [
   z.strictObject({ mode: z.literal('websearch'), request: searchInitialSchema }),
@@ -67,12 +73,18 @@ export function createTaskDriver(
         `${Math.max(1, Math.floor((input.deadlineAt - Date.now() - 2000) / 1000))}s`,
       ];
       if (input.conversationId) args.push('--conversation', input.conversationId);
+      let searches = 0;
       const proc = await runProcess({
         executable: config.executable,
         args,
         cwd: input.workspaceDir,
         input: JSON.stringify({ event: 'user', message: { content: input.prompt } }) + '\n',
         deadlineAt: input.deadlineAt,
+        idleMs: input.idleTimeoutMs,
+        inspect: (e) =>
+          searchEventFailure(e) ??
+          (isCompletedSearch(e) && ++searches > 5 ? 'INVALID_OUTPUT' : undefined),
+        inspectStderr: searchStderrCode,
         signal,
         env: { ...process.env, AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
       });

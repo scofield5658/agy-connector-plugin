@@ -24,23 +24,43 @@ export function parseResultEvent(event: unknown): RunTurnResult {
       }
     : invalid();
 }
+const permissionDenied = (stderr: string) =>
+  /permission.{0,30}(denied|blocked)|not permitted|tool.{0,30}denied/i.test(stderr);
+export const textStderrCode = (stderr: string) =>
+  permissionDenied(stderr)
+    ? 'PERMISSION_DENIED'
+    : /rate.?limit|quota exceeded|429/i.test(stderr)
+      ? 'RATE_LIMITED'
+      : /unauthenticated|not logged in|login required/i.test(stderr)
+        ? 'AUTH_REQUIRED'
+        : 'CLI_ERROR';
+/** Failure for one transcript event that already decides the outcome. */
+export function textEventFailure(
+  e: Record<string, unknown>,
+): Extract<RunTurnResult, { ok: false }> | undefined {
+  if (e.event === 'error') return { ok: false, code: 'CLI_ERROR', message: 'CLI 报告错误。' };
+  if (e.event !== 'step_update') return undefined;
+  const step = e.step_update as { state?: string; step_type?: string } | undefined;
+  if (step?.step_type === 'finish') return undefined;
+  if (step?.state === 'ERROR' || step?.state === 'FAILED')
+    return { ok: false, code: 'CLI_ERROR', message: 'CLI 步骤失败。' };
+  // The verified agent permits only finish. Never accept an external tool run as text processing.
+  if (
+    step?.step_type &&
+    !['user_input', 'agent_response', 'system_message', 'finish'].includes(step.step_type)
+  )
+    return { ok: false, code: 'PERMISSION_DENIED', message: '出现超出文本处理范围的步骤。' };
+  return undefined;
+}
 export function decodeTranscript(
   stdout: string,
   stderr: string,
   exitCode: number | null,
 ): RunTurnResult {
-  if (/permission.{0,30}(denied|blocked)|not permitted|tool.{0,30}denied/i.test(stderr))
+  if (permissionDenied(stderr))
     return { ok: false, code: 'PERMISSION_DENIED', message: '受限工具请求被拒绝。' };
   if (exitCode !== 0 || stderr.trim())
-    return {
-      ok: false,
-      code: /rate.?limit|quota exceeded|429/i.test(stderr)
-        ? 'RATE_LIMITED'
-        : /unauthenticated|not logged in|login required/i.test(stderr)
-          ? 'AUTH_REQUIRED'
-          : 'CLI_ERROR',
-      message: 'CLI 未正常完成。',
-    };
+    return { ok: false, code: textStderrCode(stderr), message: 'CLI 未正常完成。' };
   try {
     const events = stdout
       .split(/\r?\n/)
@@ -52,22 +72,12 @@ export function decodeTranscript(
     if (final.length !== 1) return invalid();
     let finishFailed = false;
     for (const e of events) {
-      if (e.event === 'error') return { ok: false, code: 'CLI_ERROR', message: 'CLI 报告错误。' };
-      if (e.event === 'step_update') {
-        const step = e.step_update as { state?: string; step_type?: string } | undefined;
-        if (step?.step_type === 'finish') {
-          if (step.state === 'ERROR' || step.state === 'FAILED') finishFailed = true;
-          if (step.state === 'DONE') finishFailed = false;
-          continue;
-        }
-        if (step?.state === 'ERROR' || step?.state === 'FAILED')
-          return { ok: false, code: 'CLI_ERROR', message: 'CLI 步骤失败。' };
-        // The verified agent permits only finish. Never accept an external tool run as text processing.
-        if (
-          step?.step_type &&
-          !['user_input', 'agent_response', 'system_message', 'finish'].includes(step.step_type)
-        )
-          return { ok: false, code: 'PERMISSION_DENIED', message: '出现超出文本处理范围的步骤。' };
+      const failed = textEventFailure(e);
+      if (failed) return failed;
+      const step = e.step_update as { state?: string; step_type?: string } | undefined;
+      if (e.event === 'step_update' && step?.step_type === 'finish') {
+        if (step.state === 'ERROR' || step.state === 'FAILED') finishFailed = true;
+        if (step.state === 'DONE') finishFailed = false;
       }
     }
     if (finishFailed)

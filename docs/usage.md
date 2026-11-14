@@ -31,14 +31,17 @@
 | 环境变量 | 默认 | 范围 |
 | --- | --- | --- |
 | `AGY_EXECUTABLE` | 查找本地 `agy` | 可指定绝对路径；显式路径错误不回退 |
-| `AGY_POLISH_BUDGET_MS` | 30000 | 5000–60000 |
-| `AGY_SEARCH_BUDGET_MS` | 60000 | 5000–60000 |
-| `AGY_NATIVE_BUDGET_MS` | 120000 | 5000–300000 |
-| `AGY_GENERAL_BUDGET_MS` | 60000 | 5000–60000，仅兼容文本委托 |
+| `AGY_POLISH_BUDGET_MS` | 30000 | 5000–1800000，建议不超过 300000 |
+| `AGY_SEARCH_BUDGET_MS` | 60000 | 5000–1800000，建议不超过 300000 |
+| `AGY_NATIVE_BUDGET_MS` | 120000 | 5000–1800000 |
+| `AGY_GENERAL_BUDGET_MS` | 60000 | 5000–1800000，仅兼容文本委托 |
+| `AGY_IDLE_TIMEOUT_MS` | 120000 | 0 或 10000–1800000；0 表示关闭空闲检测 |
 | `AGY_MAX_TURNS` | 2 | 1 或 2，含初次调用 |
 | `AGY_CHINESE_RATIO` | 0.5 | 0–1，自动润色的中文比例阈值 |
 
-由宿主 MCP 配置传入这些变量，修改后重启 MCP。预算包含审批、反馈等待和进程清理；默认 30 秒可能不足，可将润色预算设为 60000。插件不读取项目任意配置文件或保存凭据。
+由宿主 MCP 配置传入这些变量，修改后重启 MCP。预算包含审批、反馈等待和进程清理；默认 30 秒可能不足，可将润色预算设为 60000。宿主自身的 MCP 调用超时可能更短，以先到者为准。插件不读取项目任意配置文件或保存凭据。
+
+预算只是上限：agy 退出、输出报错或越权步骤时立即结束；连续无输出超过 `AGY_IDLE_TIMEOUT_MS` 时以 `IDLE_TIMEOUT` 结束，等待用户授权期间不计时。
 
 **代理配置：**宿主通常不会把整个终端环境传给 MCP。若终端中 agy 可用、宿主中却一直超时，在该 MCP 的 `env` 中显式设置本机需要的 `http_proxy`、`https_proxy`、`all_proxy`（或对应大写变量）及 `no_proxy`。只传实际使用的变量，不复制整个环境，不把代理凭据写入仓库。Cursor 支持 `${env:变量名}` 插值；Codex 自建 MCP 配置支持 `env_vars` 选择性继承。GUI 启动的宿主也需要能取得这些变量。
 
@@ -50,6 +53,7 @@
 | `ISOLATION_UNVERIFIED` | 查看 [已验证组合](compatibility.md)，不绕过隔离门槛 |
 | `AUTH_REQUIRED` | 检查官方登录状态；首次登录不是任务内操作审批 |
 | `DEADLINE_EXCEEDED` | 本次按规则降级；检查网络及后续任务预算 |
+| `IDLE_TIMEOUT` | agy 长时间无输出；检查网络、代理和登录，或调大 `AGY_IDLE_TIMEOUT_MS` |
 | `CONTENT_REJECTED` | 候选改变了受保护内容，保留原稿 |
 | `AUTHORIZATION_UNAVAILABLE` / `AUTHORIZATION_EXPIRED` | 授权界面不可用或等待授权超时，停止本次委托 |
 | `INSTANCE_DISABLED` | 先前进程回收未确认，检查后重启插件 |

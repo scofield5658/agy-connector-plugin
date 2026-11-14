@@ -8,7 +8,7 @@ import type {
   Workflow,
 } from '../contracts.js';
 import { createDelegator } from '../delegation/engine.js';
-import { defaultConfig } from '../config.js';
+import { budgetSchema, defaultConfig } from '../config.js';
 import type { AgyRuntimeConfig } from '../antigravity/driver.js';
 import { createTaskDriver, payloadFor } from './driver.js';
 import { limitDriver, createProcessLimiter } from '../antigravity/limiter.js';
@@ -25,8 +25,8 @@ import {
   type ToolTaskService,
 } from './contracts.js';
 export const taskConfigSchema = z.strictObject({
-  searchBudgetMs: z.number().int().min(5000).max(60000).default(60000),
-  nativeBudgetMs: z.number().int().min(5000).max(300000).default(120000),
+  searchBudgetMs: budgetSchema.default(60000),
+  nativeBudgetMs: budgetSchema.default(120000),
 });
 export function readTaskConfig(env: NodeJS.ProcessEnv = process.env) {
   return taskConfigSchema.parse({
@@ -40,6 +40,7 @@ export function createTaskService(options: {
   limiter?: ReturnType<typeof createProcessLimiter>;
   config?: z.infer<typeof taskConfigSchema>;
   maxTurns?: 1 | 2;
+  idleTimeoutMs?: number;
 }): ToolTaskService {
   const config = taskConfigSchema.parse(options.config ?? {});
   const permissions = new AsyncLocalStorage<PermissionHandler | undefined>();
@@ -73,7 +74,11 @@ export function createTaskService(options: {
   const engine = createDelegator({
     driver: options.limiter ? limitDriver(driver, options.limiter) : driver,
     workflows: { general: workflow, 'zh-polish': workflow },
-    config: { ...defaultConfig, maxTurns: options.maxTurns ?? defaultConfig.maxTurns },
+    config: {
+      ...defaultConfig,
+      maxTurns: options.maxTurns ?? defaultConfig.maxTurns,
+      idleTimeoutMs: options.idleTimeoutMs ?? defaultConfig.idleTimeoutMs,
+    },
     clock: { now: Date.now },
     onCleanupUnconfirmed: options.limiter?.disable,
     allowExecution: true,

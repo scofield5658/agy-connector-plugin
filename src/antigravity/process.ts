@@ -10,7 +10,14 @@ type ProcessOptions = {
   deadlineAt: number;
   signal: AbortSignal;
   onMessage?: (message: Record<string, unknown>, channel: DialogueChannel) => Promise<void>;
+  /** Stops without output for this long; 0 or unset disables it. Paused while onMessage runs. */
+  idleMs?: number;
+  /** Returns a failure code when a stdout event already decides the outcome. */
+  inspect?: (event: Record<string, unknown>) => string | undefined;
+  /** Returns a failure code once stderr output already decides the outcome. */
+  inspectStderr?: (stderr: string) => string | undefined;
 };
+const STDERR_SETTLE_MS = 500;
 export type ProcessResult =
   | {
       ok: true;
@@ -50,7 +57,10 @@ export function runProcess(options: ProcessOptions): Promise<ProcessResult> {
     let treeKiller: ReturnType<typeof spawn> | undefined;
     const decoder = new StringDecoder('utf8');
     let pendingLine = '',
-      exchange = Promise.resolve();
+      exchange = Promise.resolve(),
+      lastActivity = Date.now(),
+      handling = 0,
+      stderrTimer: ReturnType<typeof setTimeout> | undefined;
     const channel: DialogueChannel = {
       send(message) {
         if (settled || reason || closed || options.signal.aborted || child.stdin.writableEnded)
@@ -152,6 +162,13 @@ export function runProcess(options: ProcessOptions): Promise<ProcessResult> {
     );
     const poll = setInterval(() => {
       if (closed) finish();
+      else if (
+        !reason &&
+        options.idleMs &&
+        handling === 0 &&
+        Date.now() - lastActivity >= options.idleMs
+      )
+        stop('IDLE_TIMEOUT');
     }, 20);
     // clearInterval accepts the same timer handle type as clearTimeout.
     timers.push(poll);
@@ -164,13 +181,39 @@ export function runProcess(options: ProcessOptions): Promise<ProcessResult> {
           return;
         }
         buffers[i]!.push(chunk);
-        if (i === 0 && options.onMessage) {
+        lastActivity = Date.now();
+        if (i === 1 && options.inspectStderr && !stderrTimer) {
+          stderrTimer = setTimeout(() => {
+            const code = options.inspectStderr!(Buffer.concat(buffers[1]!).toString('utf8'));
+            if (code) stop(code);
+          }, STDERR_SETTLE_MS);
+          timers.push(stderrTimer);
+        }
+        if (i === 0 && (options.onMessage || options.inspect)) {
           pendingLine += decoder.write(chunk);
           let newline: number;
           while ((newline = pendingLine.indexOf('\n')) >= 0) {
             const line = pendingLine.slice(0, newline);
             pendingLine = pendingLine.slice(newline + 1);
             if (!line.trim()) continue;
+            if (options.inspect) {
+              let event: unknown;
+              try {
+                event = JSON.parse(line);
+              } catch {
+                /* The final decoder reports malformed output. */
+              }
+              const code =
+                event && typeof event === 'object' && !Array.isArray(event)
+                  ? options.inspect(event as Record<string, unknown>)
+                  : undefined;
+              if (code) {
+                stop(code);
+                return;
+              }
+            }
+            if (!options.onMessage) continue;
+            handling++;
             exchange = exchange
               .then(async () => {
                 if (settled || reason || options.signal.aborted) return;
@@ -179,7 +222,11 @@ export function runProcess(options: ProcessOptions): Promise<ProcessResult> {
                   throw Error('Invalid message');
                 await options.onMessage!(message as Record<string, unknown>, channel);
               })
-              .catch(() => stop('INVALID_OUTPUT'));
+              .catch(() => stop('INVALID_OUTPUT'))
+              .finally(() => {
+                handling--;
+                lastActivity = Date.now();
+              });
           }
         }
       }),

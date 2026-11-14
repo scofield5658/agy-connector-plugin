@@ -51,6 +51,8 @@ cursor-agent --plugin-dir /absolute/path/to/release/cursor
 
 源码在 `src/`，回归测试在 `tests/`，宿主模板在 `integrations/`，技能在 `skills/`。使用 pnpm 10.33.0 和锁定依赖。
 
+`docs/` 后续作为本地文档目录，新增文件默认由 Git 忽略。已有文档仍受跟踪，供当前换机接续和发行构建使用。停止跟踪整个目录前，须先迁移 Skills 和打包脚本依赖的文档、更新引用，再移除 Git 跟踪并保留本地文件；不能只添加忽略规则或直接删除目录。
+
 ```sh
 pnpm typecheck
 pnpm test

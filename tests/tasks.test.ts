@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, vi } from 'vitest';
 import { createTaskService } from '../src/tasks/service.js';
 import { createProcessLimiter, limitDriver } from '../src/antigravity/limiter.js';
 import type { AgyDriver } from '../src/contracts.js';
@@ -140,6 +140,7 @@ it('changed authorization with the same id conflicts instead of executing', asyn
   }
 });
 it('uses one total budget across feedback and honors the shared turn setting', async () => {
+  const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
   const deadlines: number[] = [];
   const s = createTaskService({
     driver: {
@@ -153,6 +154,7 @@ it('uses one total budget across feedback and honors the shared turn setting', a
   const one = createTaskService({ driver: fake, maxTurns: 1 });
   try {
     const r = await s.websearch(search, new AbortController().signal);
+    now.mockReturnValue(1_001_000);
     await s.websearch(
       {
         kind: 'followup',
@@ -164,12 +166,12 @@ it('uses one total budget across feedback and honors the shared turn setting', a
       },
       new AbortController().signal,
     );
-    expect(deadlines).toHaveLength(2);
-    expect(deadlines[0]).toBe(deadlines[1]);
+    expect(deadlines).toEqual([1_005_000, 1_005_000]);
     expect((await one.runTask(native, new AbortController().signal)).sessionToken).toBeUndefined();
   } finally {
     await s.close();
     await one.close();
+    now.mockRestore();
   }
 });
 

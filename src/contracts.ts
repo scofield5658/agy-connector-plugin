@@ -92,6 +92,7 @@ export type RunTurnInput = {
   conversationId?: string;
   workspaceDir: string;
   deadlineAt: number;
+  idleTimeoutMs?: number;
   model?: string;
 };
 export type RunTurnResult =
@@ -111,6 +112,7 @@ export type Clock = { now(): number };
 export type PluginConfig = {
   polishBudgetMs: number;
   generalBudgetMs: number;
+  idleTimeoutMs: number;
   maxTurns: 1 | 2;
   chineseRatioThreshold: number;
 };

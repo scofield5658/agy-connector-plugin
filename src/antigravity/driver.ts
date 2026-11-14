@@ -4,7 +4,7 @@ import { type AgyDriver } from '../contracts.js';
 import type { CapabilityReport } from './capabilities.js';
 import { AGENT_NAME, SETTINGS, prepareWorkspace, type TextOnlyPolicy } from './policy.js';
 import { runProcess } from './process.js';
-import { decodeTranscript } from './protocol.js';
+import { decodeTranscript, textEventFailure, textStderrCode } from './protocol.js';
 export type AgyRuntimeConfig = {
   executable: string;
   capabilities: CapabilityReport;
@@ -58,6 +58,9 @@ export function createAgyDriver(config: AgyRuntimeConfig): AgyDriver {
         input: JSON.stringify({ event: 'user', message: { content: input.prompt } }) + '\n',
         signal,
         deadlineAt: input.deadlineAt,
+        idleMs: input.idleTimeoutMs,
+        inspect: (e) => textEventFailure(e)?.code,
+        inspectStderr: textStderrCode,
         env: { ...process.env, AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
       });
       if (!proc.ok) {

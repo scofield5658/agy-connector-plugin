@@ -61,6 +61,7 @@ async function main() {
     limiter,
     config: taskConfig,
     maxTurns: config.maxTurns,
+    idleTimeoutMs: config.idleTimeoutMs,
     ...(!configValid || !taskConfigValid
       ? {
           driver: {

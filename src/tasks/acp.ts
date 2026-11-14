@@ -103,6 +103,7 @@ export async function runAcp(options: {
         }) + '\n',
       env: { ...process.env, AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
       deadlineAt: input.deadlineAt,
+      idleMs: input.idleTimeoutMs,
       signal: lifetime.signal,
       onMessage: async (e, channel) => {
         if (errorCode) return;

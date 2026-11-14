@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agy-connector-plugin",
+  "description": "为 Codex 和 Cursor 接入 Antigravity CLI：中文润色、网页搜索和共享项目委托，支持宿主授权与失败降级。",
+  "keywords": ["antigravity", "writing", "search", "delegation"]
+}

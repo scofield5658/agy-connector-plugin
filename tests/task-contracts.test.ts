@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { mkdtemp, mkdir, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -87,8 +87,14 @@ it('canonicalizes shared roots and rejects symlinked artifact escape', async () 
       writeRoots: [project],
       artifactDir: join(project, 'new', 'artifacts'),
     };
-    expect((await resolveWorkspace(w)).artifactDir).toMatch(/new\/artifacts$/);
-    await symlink(outside, join(project, 'escape'), 'dir');
+    expect((await resolveWorkspace(w)).artifactDir).toBe(
+      join(await realpath(project), 'new', 'artifacts'),
+    );
+    await symlink(
+      outside,
+      join(project, 'escape'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     await expect(
       resolveWorkspace({ ...w, artifactDir: join(project, 'escape', 'out') }),
     ).rejects.toThrow('ARTIFACT_OUTSIDE_WRITE_ROOTS');

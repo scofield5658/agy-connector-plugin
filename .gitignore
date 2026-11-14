@@ -4,8 +4,9 @@ release/
 coverage/
 .superpowers/
 .local/
-# New local docs are ignored; tracked runtime docs stay until dependency migration.
-/docs/
+# Local development plans and temporary handoff notes.
+/docs/superpowers/
+/HANDOFF.md
 *.log
 .env
 .env.*

@@ -14,7 +14,7 @@
 
 需要 Node.js ≥22.12 和已安装、登录的 Antigravity CLI。目前只对 **macOS arm64 + agy 1.5.8** 启用真实调用；其他组合降级。宿主验收范围见 [兼容性](docs/compatibility.md)。
 
-从源码构建：
+从源码构建（需要 pnpm 10.33.0）：
 
 ```sh
 pnpm install --frozen-lockfile
@@ -45,13 +45,11 @@ cursor-agent --plugin-dir /absolute/path/to/release/cursor
 
 这些入口用于 Agent 输入框，不是 Shell 命令。自动润色依赖宿主选择 Skill，并非强制拦截所有输出。
 
-通用委托会使用 agy 的独立配置、MCP、Skills 和 hooks。需要临时授权时，插件把具体操作转交 Codex/Cursor 会话确认，只接受本次允许；宿主不支持确认、拒绝或超时则停止。当前已验证协议和 Codex 会话转接，GUI 实际授权窗口仍待验收。
+通用委托会使用 agy 的独立配置、MCP、Skills 和 hooks。需要临时授权时，插件把具体操作转交 Codex/Cursor 会话确认，只接受本次允许；宿主不支持确认、拒绝或超时则停止。图形界面中的技能菜单和授权操作尚未完成验证，具体支持情况见 [兼容性](docs/compatibility.md)。
 
-## 开发
+## 构建与校验
 
-源码在 `src/`，回归测试在 `tests/`，宿主模板在 `integrations/`，技能在 `skills/`。使用 pnpm 10.33.0 和锁定依赖。
-
-`docs/` 后续作为本地文档目录，新增文件默认由 Git 忽略。已有文档仍受跟踪，供当前换机接续和发行构建使用。停止跟踪整个目录前，须先迁移 Skills 和打包脚本依赖的文档、更新引用，再移除 Git 跟踪并保留本地文件；不能只添加忽略规则或直接删除目录。
+从源码构建需要 pnpm 10.33.0，依赖版本由锁文件固定。可执行以下命令检查并生成发行包：
 
 ```sh
 pnpm typecheck
@@ -62,4 +60,4 @@ pnpm package
 pnpm check:package
 ```
 
-发行包位于 `release/`，运行依赖已打包。真实模型验证需单独执行，可能消耗额度；命令和证据见 [验证记录](docs/verification.md)。接口细节见 [工具契约](docs/tool-contract.md)。采用 [MIT 协议](LICENSE)，第三方依赖声明随包提供。
+发行包位于 `release/`，运行依赖已打包，使用发行包无需 pnpm。支持情况及限制见 [验证范围](docs/verification.md)，高级调用参数见 [工具契约](docs/tool-contract.md)。采用 [MIT 协议](LICENSE)，第三方依赖声明随包提供。

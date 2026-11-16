@@ -43,7 +43,20 @@
 
 预算只是上限：agy 退出、输出报错或越权步骤时立即结束；连续无输出超过 `AGY_IDLE_TIMEOUT_MS` 时以 `IDLE_TIMEOUT` 结束，等待用户授权期间不计时。
 
-**代理配置：**宿主通常不会把整个终端环境传给 MCP。若终端中 agy 可用、宿主中却一直超时，在该 MCP 的 `env` 中显式设置本机需要的 `http_proxy`、`https_proxy`、`all_proxy`（或对应大写变量）及 `no_proxy`。只传实际使用的变量，不复制整个环境，不把代理凭据写入仓库。Cursor 支持 `${env:变量名}` 插值；Codex 自建 MCP 配置支持 `env_vars` 选择性继承。GUI 启动的宿主也需要能取得这些变量。
+**代理配置：**Codex 和 Cursor 使用相同的本地配置方式。在仓库根目录复制 `mcp-env.example.json` 为 `mcp-env.local.json`，将模板端口改为本机代理的 HTTP 端口，然后打包并安装：
+
+```sh
+pnpm build
+pnpm package --mcp-env-file mcp-env.local.json
+pnpm check:package
+codex plugin add agy-connector-plugin@agy-local
+```
+
+首次使用 Codex 时，先按 README 注册本地 marketplace；Cursor 加载 `release/cursor`。两端 MCP 的 `env` 都会合并该 JSON 对象，本地值覆盖模板中的同名变量。所有值必须是字符串，也可以加入上表中的超时配置。修改后重新打包、安装并重开宿主会话。
+
+`mcp-env.local.json` 留在本地仓库目录，已被 Git 忽略，不会复制进发行包；它的配置值会写入本次生成的 `release/` 下的 MCP 文件及压缩包，因此这些产物仅用于本机安装。向他人分发前，运行不带参数的 `pnpm package` 重新生成公共包。普通打包不会读取本地文件或自动使用示例地址；缺失或格式错误的显式配置会在覆盖已有产物前报错。
+
+通常只需 `http_proxy` 和 `https_proxy`，两者可以使用同一个 `http://` 代理地址；不必同时设置 `all_proxy`，`no_proxy` 按需添加。未设置 `no_proxy` 不代表关闭代理。无需修改 `.zshrc` 或其他 Shell 配置，也不要把完整进程环境或代理凭据提交到仓库。运行时仍会继承宿主实际传入的环境变量。
 
 首次可调用 `agy_health`：`ready` 和 `modes` 表示版本、隔离适配和配置检查结果，`auth=unknown`；它不调用模型，不验证登录、网络或配额。
 

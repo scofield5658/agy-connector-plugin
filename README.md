@@ -35,7 +35,7 @@ Cursor CLI 可临时加载，无需全局安装：
 cursor-agent --plugin-dir /absolute/path/to/release/cursor
 ```
 
-构建不会安装插件或修改全局配置。安装后重开会话；若本机访问 agy 依赖代理，需要在宿主 MCP 环境中显式传入代理配置，详见 [使用说明](docs/usage.md)。
+构建不会安装插件或修改全局配置。安装后重开会话。若本机访问 agy 需要代理，复制 `mcp-env.example.json` 为 `mcp-env.local.json`，填写本机地址，再运行 `pnpm package --mcp-env-file mcp-env.local.json`。该配置同时用于 Codex 和 Cursor，只通过 MCP 传入，无需修改 Shell 配置。本地文件已被 Git 忽略，普通 `pnpm package` 不读取它。完整步骤见 [使用说明](docs/usage.md)。
 
 ## 使用
 

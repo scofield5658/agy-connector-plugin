@@ -1,6 +1,6 @@
 # 兼容性
 
-版本 0.1.0 的真实 agy 调用仅支持已验证的 **macOS arm64 + Antigravity CLI 1.5.8**。其他平台或 agy 版本返回 `ISOLATION_UNVERIFIED`，由宿主按失败规则处理。Node.js 最低版本为 22.12，验证使用 Node.js 22.23.3。
+当前版本的真实 agy 调用仅支持已验证的 **macOS arm64 + Antigravity CLI 1.5.8**。其他平台或 agy 版本返回 `ISOLATION_UNVERIFIED`，由宿主按失败规则处理。Node.js 最低版本为 22.12，验证使用 Node.js 22.23.3。
 
 CI 在 Ubuntu、macOS 和 Windows 上分别运行测试、构建与发行包校验，各平台独立完成检查。路径测试使用本机路径格式，并验证目录链接不能使制品路径越过授权目录；Windows 使用目录 junction，其他平台使用符号链接。
 

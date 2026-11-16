@@ -11,6 +11,7 @@ const expected = [
   'skills/agy-websearch/SKILL.md',
   'README.md',
   'LICENSE',
+  'mcp-env.example.json',
   'docs/usage.md',
   'docs/tool-contract.md',
   'docs/compatibility.md',

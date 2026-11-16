@@ -4,6 +4,7 @@ release/
 coverage/
 .superpowers/
 .local/
+/mcp-env.local.json
 # Local development plans and temporary handoff notes.
 /docs/superpowers/
 /HANDOFF.md
